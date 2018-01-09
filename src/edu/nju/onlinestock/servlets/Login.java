@@ -32,13 +32,18 @@ public class Login extends HttpServlet {
 	 */
 	protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 		// TODO Auto-generated method stub
-/*		ServletContext Context= getServletContext();
-		int webCounter= Integer.parseInt((String) Context.getAttribute("webCounter"));
+		ServletContext Context= getServletContext();
+		int onlineNum = Integer.parseInt((String)Context.getAttribute("onlineUser"));
+		int totalNum = Integer.parseInt((String)Context.getAttribute("totalUser"));
 		if (null == request.getParameter("Logout")) {
-			System.out.println("pageCounter++\n");
-			webCounter++;
-			Context.setAttribute("webCounter", Integer.toString(webCounter));
-		}*/
+			System.out.println("totalUser++\n");
+			totalNum++;
+			Context.setAttribute("totalUser", Integer.toString(totalNum));
+		}else {
+			System.out.println("onlineUser--\n");
+			onlineNum--;
+			Context.setAttribute("onlineUser", Integer.toString(onlineNum));
+		}
 
 		String login="";
 		HttpSession session = request.getSession(false);
@@ -73,7 +78,7 @@ public class Login extends HttpServlet {
 
         out.println(
                 "<form method='POST' action='"
-                    + response.encodeURL(request.getContextPath()+"/ShowMyStockServlet")
+                    + response.encodeURL(request.getContextPath()+"/ShowMyOrderServlet")
                     + "'>");
         out.println(
             "login: <input type='text' name='login' value='" + login + "'>");

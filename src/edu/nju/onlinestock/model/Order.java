@@ -6,7 +6,7 @@ import java.sql.Date;
 public class Order implements Serializable{
 	private int orderid;
 	private int stockid;
-	private int userid;
+	private String username;
 	private int number;
 	private double totalPrice;
 	private Date date;
@@ -23,11 +23,11 @@ public class Order implements Serializable{
 	public void setStockid(int stockid) {
 		this.stockid = stockid;
 	}
-	public int getUserid() {
-		return userid;
+	public String getUsername() {
+		return username;
 	}
-	public void setUserid(int userid) {
-		this.userid = userid;
+	public void setUsername(String username) {
+		this.username = username;
 	}
 	public int getNumber() {
 		return number;

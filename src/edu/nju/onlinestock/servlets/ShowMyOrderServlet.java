@@ -14,7 +14,7 @@ import java.util.Properties;
 
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
-
+import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.Cookie;
@@ -24,6 +24,7 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import javax.sql.DataSource;
 
+import edu.nju.onlinestock.factory.ServiceFactory;
 import edu.nju.onlinestock.model.Order;
 import edu.nju.onlinestock.model.Stock;
 
@@ -38,15 +39,18 @@ import edu.nju.onlinestock.model.Stock;
 /**
  * Servlet implementation class StockListServlet
  */
-@WebServlet("/ShowMyStockServlet")
-public class ShowMyStockServlet extends HttpServlet {
+@WebServlet("/ShowMyOrderServlet")
+public class ShowMyOrderServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private DataSource datasource = null;
-
+	int onlineNum;
+	int visitorNum;
+	int totalNum;
+	
 	/**
 	 * @see HttpServlet#HttpServlet()
 	 */
-	public ShowMyStockServlet() {
+	public ShowMyOrderServlet() {
 		super();
 		// TODO Auto-generated constructor stub
 	}
@@ -136,7 +140,6 @@ public class ShowMyStockServlet extends HttpServlet {
 
 				req.setAttribute("login", loginValue);
 				
-				System.out.println("1:"+req.getAttribute("login"));
 				isUserValid(req,resp);
 
 			} else {
@@ -155,46 +158,7 @@ public class ShowMyStockServlet extends HttpServlet {
 		}
 
 	}
-
-	public void getStockList(HttpServletRequest req, HttpServletResponse res) {
-
-		Connection connection = null;
-		PreparedStatement stmt = null;
-		ResultSet result = null;
-		ArrayList list = new ArrayList();
-		Statement sm = null;
-		try {
-			connection = datasource.getConnection();
-		} catch (SQLException e) {
-			e.printStackTrace();
-		}
-
-		try {
-			System.out.println(req.getAttribute("login"));
-			stmt = connection.prepareStatement("select stockid from mystock where userid = ?");
-			stmt.setString(1, (String) req.getAttribute("login"));
-			result = stmt.executeQuery();
-			while (result.next()) {
-				Stock stock = new Stock();
-				stock.setId(result.getInt("stockid"));
-				/*
-				 * stock.setCompanyName(result.getString(2));
-				 * stock.setType(result.getString(3));
-				 * stock.setPrice(result.getDouble(4));
-				 * stock.setDate(result.getDate("date"));
-				 */
-				list.add(stock);
-				System.out.println("stockid: "+result.getInt("stockid"));
-			}
-		} catch (SQLException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-
-		req.setAttribute("list", list);
-
-	}
-
+	
 	public void displayLogoutPage(HttpServletRequest req, HttpServletResponse res) throws IOException {
 		PrintWriter out = res.getWriter();
 		// 注销Logout
@@ -207,31 +171,7 @@ public class ShowMyStockServlet extends HttpServlet {
 
 	}
 
-	public void displayMyStocklistPage(HttpServletRequest req, HttpServletResponse res) throws IOException {
-		ArrayList list = (ArrayList) req.getAttribute("list"); // resp.sendRedirect(req.getContextPath()+"/MyStockList");
-
-		PrintWriter out = res.getWriter();
-		out.println("<html><body>");
-		out.println("<table width='650' border='0' >");
-		out.println("<tr>");
-		out.println("<td width='650' height='80' background='" + req.getContextPath() + "/image/top.jpg'>&nbsp;</td>");
-		out.println("</tr>");
-		out.println("</table>");
-		out.println("<p>Welcome " + req.getAttribute("login") + "</p>");
-
-		out.println("My Stock List:  ");
-
-		for (int i = 0; i < list.size(); i++) {
-			Stock stock = (Stock) list.get(i);
-			out.println(stock.getId());
-		}
-		out.println("</p>");
-		// 点击here，刷新该页面，会话有效
-		out.println("Click <a href='" + res.encodeURL(req.getRequestURI()) + "'>here</a> to reload this page.<br>");
-	}
-
 	public void isUserValid(HttpServletRequest req,HttpServletResponse res) throws IOException {
-		System.out.println("2:"+req.getAttribute("login"));
 		String password = (String) req.getParameter("password");
 		
 		Connection connection = null;
@@ -246,22 +186,41 @@ public class ShowMyStockServlet extends HttpServlet {
 		}
 
 		try {
-			stmt = connection.prepareStatement("select password from user where userid = ?");
+			stmt = connection.prepareStatement("select password from user where username = ?");
 			stmt.setString(1, (String) req.getAttribute("login"));
 			result = stmt.executeQuery();
+			
+			ServletContext Context = this.getServletContext();
+			onlineNum= Integer.parseInt((String) Context.getAttribute("onlineUser"));
+			visitorNum = Integer.parseInt((String)Context.getAttribute("visitor"));
+			totalNum = Integer.parseInt((String)Context.getAttribute("totalUser"));
+			visitorNum = totalNum - onlineNum;
+			Context.setAttribute("onlineUser", Integer.toString(onlineNum));
+			Context.setAttribute("visitor", Integer.toString(visitorNum));
+			
 			if(!result.next()){
 				PrintWriter out = res.getWriter();
 				out.println("<html><body");
-				out.println("<p>输入的用户id不存在</p>");
+				out.println("<p>输入的用户id不存在</p><br /><br />");
+				out.println("<p>总人数："+totalNum+"</p>");
+				out.println("<p>已登录人数："+onlineNum+"</p>");
+				out.println("<p>游客人数："+visitorNum+"</p>");
 				out.println("</body></html>");
 			}else {
 				String passdb = result.getString("password");
 				if(!password.equals(passdb)) {
 					PrintWriter out = res.getWriter();
 					out.println("<html><body");
-					out.println("<p>用户密码错误</p>");
+					out.println("<p>用户密码错误</p><br /><br />");
+					out.println("<p>总人数："+totalNum+"</p>");
+					out.println("<p>已登录人数："+onlineNum+"</p>");
+					out.println("<p>游客人数："+visitorNum+"</p>");
 					out.println("</body></html>");
 				}else {
+					onlineNum++;
+					visitorNum = totalNum - onlineNum;
+					Context.setAttribute("onlineUser", Integer.toString(onlineNum));
+					Context.setAttribute("visitor", Integer.toString(visitorNum));
 					getOrderList(req,res);
 				}
 			}
@@ -273,60 +232,26 @@ public class ShowMyStockServlet extends HttpServlet {
 	}
 	
 	public void getOrderList(HttpServletRequest req, HttpServletResponse res) throws IOException {
-		//存储订单缺货时信息的变量
-		boolean isLack = false;
-		int lackStockId = 0;
+		HttpSession session = req.getSession(true);
+		ServletContext context = getServletContext();
 		
-		System.out.println("3:"+req.getAttribute("login"));
-		Connection connection = null;
-		PreparedStatement stmt = null;
-		ResultSet result = null;
-		ArrayList list = new ArrayList();
-		Statement sm = null;
+		String loginName=(String) req.getAttribute("login");
+		ArrayList list = (ArrayList) ServiceFactory.getStockManageService().getMyOrder(loginName);
+		
+		session.setAttribute("orderList", list);
 		try {
-			connection = datasource.getConnection();
-		} catch (SQLException e) {
-			e.printStackTrace();
-		}
-
-		try {
-			stmt = connection.prepareStatement("select * from myorder where userid = ?");
-			stmt.setString(1, (String) req.getAttribute("login"));
-			result = stmt.executeQuery();
-			while (result.next()) {
-				Order order = new Order();
-				order.setStockid(result.getInt("stockid"));
-				order.setNumber(result.getInt("number"));
-				int stockNum = getStockNum(result.getInt("stockid"));
-				if(stockNum < result.getInt("number")) {
-					isLack = true;
-					lackStockId = result.getInt("stockid");
-					break;
-				}
-				order.setTotalPrice(result.getDouble("totalPrice"));
-				list.add(order);
-			}
-		} catch (SQLException e) {
+			context.getRequestDispatcher("/order/orderList.jsp").forward(
+					req, res);
+		} catch (ServletException e) {
 			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-
-		req.setAttribute("orderlist", list);
-		
-		if(isLack == true) {
-			PrintWriter out = res.getWriter();
-			out.println("<p>Welcome " + req.getAttribute("login") + "</p>");
-			out.println("<p>您的订单中id为"+lackStockId+"的股票缺货</p>");
-		}else {
-			displayMyOrderlistPage(req, res);
-			displayLogoutPage(req, res);
+			res.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+					"This is a ServletException.");
 		}
 	
 	}
 	
 	public void displayMyOrderlistPage(HttpServletRequest req, HttpServletResponse res) throws IOException {
 		ArrayList list = (ArrayList) req.getAttribute("orderlist"); // resp.sendRedirect(req.getContextPath()+"/MyStockList");
-		System.out.println("4:"+req.getAttribute("login"));
 		PrintWriter out = res.getWriter();
 		out.println("<html><body>");
 		out.println("<table width='650' border='0' >");
@@ -346,6 +271,10 @@ public class ShowMyStockServlet extends HttpServlet {
 			out.println("<span>total price:"+order.getTotalPrice()+"</span>");
 			out.println("</p>");
 		}
+		out.println("<br /><br />");
+		out.println("<p>总人数："+totalNum+"</p>");
+		out.println("<p>已登录人数："+onlineNum+"</p>");
+		out.println("<p>游客人数："+visitorNum+"</p>");
 		
 		// 点击here，刷新该页面，会话有效
 		out.println("Click <a href='" + res.encodeURL(req.getRequestURI()) + "'>here</a> to reload this page.<br>");
